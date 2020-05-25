@@ -17,6 +17,8 @@ def plot_heave_gain(df):
 
     fig.append_trace(
         go.Scatter(x=list(df.Timestamp), y=list(df.sum_cyl_vel), name='sum_cyl_vel', yaxis="y"), row=1, col=1)
+    fig.append_trace(
+        go.Scatter(x=list(df.Timestamp), y=list(df.sum_heave_vel), name='sum_heave_vel', yaxis="y"), row=1, col=1)
 
     fig.append_trace(
         go.Scatter(x=list(df.Timestamp), y=list(df.PLC16_Heave_Gain_Stroke), name='Heave_Gain_Stroke', yaxis="y1"),
@@ -109,9 +111,10 @@ df['cyl2_vel'] = df['PLC36_Cyl2_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.t
 df['cyl3_vel'] = df['PLC37_Cyl3_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
 
 df['sum_cyl_vel'] = df['cyl1_vel'] + df['cyl2_vel'] + df['cyl3_vel']
+df['sum_heave_vel'] = 3 * df['PLC02_MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
 
 print('UR for this sample is {:.0f} procent'.format(100 * 1260 / 3 / df['sum_cyl_vel'].std()))
-
+print('UR for this sample is {:.0f} procent'.format(100 * 1260 / 3 / df['sum_heave_vel'].std()))
 
 # plot histogram
 hist, bins = np.histogram(df['PLC18_Heave_Gain_DC'], bins=np.arange(0.3, 1+0.15, 0.05))
@@ -120,7 +123,7 @@ ax.bar(bins[:-1], hist.astype(np.float32) / hist.sum(), width=(bins[1] - bins[0]
 ax.set_title('Normalized histogram of heave gain DC')
 ax.set_ylabel('number of datapoints, normalized')
 ax.set_xlabel('heave gain DC')
-plt.show()
+
 
 # restrict the number of datapoints to plot, otherwise plotting will be too slow.
 max_data_point_to_plot = 100000
@@ -128,10 +131,11 @@ n = len(df.Timestamp)
 if n > max_data_point_to_plot:
     a = np.linspace(0, len(df.Timestamp) - 1, max_data_point_to_plot).astype(int)
     df_for_plot = df.iloc[a]
-    print('Reducing the loaded dataset for plotting by a factor of {:.1f}'.format(
+    print('Reducing the number of datapoints in loaded dataset for plotting by a factor of {:.1f}'.format(
         n / max_data_point_to_plot))
 else:
     df_for_plot = df
 
 # plot the data
 plot_heave_gain(df_for_plot)
+plt.show()
