@@ -6,42 +6,32 @@ import matplotlib.pyplot as plt
 
 # define a plotting function to plot the results
 def plot_heave_gain(df):
-    fig = make_subplots(rows=5, cols=1, shared_xaxes=True)
-
-    # fig.append_trace(
-    #     go.Scattergl(x=list(df.Timestamp), y=list(df.PLC02_MRU1_Heave), name='MRU1_heave', yaxis="y"), row=1, col=1)
-    # fig.append_trace(
-    #         go.Scattergl(x=list(df.Timestamp), y=list(df.PLC07_MRU2_Heave), name='MRU2_heave', yaxis="y"), row=1, col=1)
-    # fig.append_trace(
-    #     go.Scattergl(x=list(df.Timestamp), y=list(df.PLC12_MRU3_Heave), name='MRU3_heave', yaxis="y"), row=1, col=1)
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
 
     fig.append_trace(
-        go.Scatter(x=list(df.Timestamp), y=list(df.sum_cyl_vel), name='sum_cyl_vel', yaxis="y"), row=1, col=1)
+        go.Scattergl(x=list(df.Timestamp), y=list(df.PLC02_MRU1_Heave), name='MRU1_heave', yaxis="y"), row=1, col=1)
     fig.append_trace(
-        go.Scatter(x=list(df.Timestamp), y=list(df.sum_heave_vel), name='sum_heave_vel', yaxis="y"), row=1, col=1)
+            go.Scattergl(x=list(df.Timestamp), y=list(df.PLC07_MRU2_Heave), name='MRU2_heave', yaxis="y"), row=1, col=1)
+    fig.append_trace(
+        go.Scattergl(x=list(df.Timestamp), y=list(df.PLC12_MRU3_Heave), name='MRU3_heave', yaxis="y"), row=1, col=1)
+    fig.append_trace(
+        go.Scatter(x=list(df.Timestamp), y=list(df.MRU01_130*1000), name='Platform MRU heave', yaxis="y"),
+        row=1, col=1)
+
 
     fig.append_trace(
         go.Scatter(x=list(df.Timestamp), y=list(df.PLC16_Heave_Gain_Stroke), name='Heave_Gain_Stroke', yaxis="y1"),
         row=2, col=1)
     fig.append_trace(
         go.Scatter(x=list(df.Timestamp), y=list(df.PLC17_Heave_Gain_Speed), name='Heave_Gain_Speed', yaxis="y1"),
-        row=2,
-        col=1)
+        row=2, col=1)
     fig.append_trace(
-        go.Scatter(x=list(df.Timestamp), y=list(df.PLC18_Heave_Gain_DC), name='Heave_Gain_DC', yaxis="y1"), row=2,
-        col=1)
+        go.Scatter(x=list(df.Timestamp), y=list(df.PLC18_Heave_Gain_DC), name='Heave_Gain_DC', yaxis="y1"),
+        row=2, col=1)
 
     fig.append_trace(
         go.Scatter(x=list(df.Timestamp), y=list(df.PLC58_System_Mode), name='System_Mode', yaxis="y2"),
         row=3, col=1)
-
-    fig.append_trace(
-        go.Scatter(x=list(df.Timestamp), y=list(df.PLC56_Utilisation_Ratio), name='Utilisation_Ratio', yaxis="y3"),
-        row=4, col=1)
-
-    fig.append_trace(
-        go.Scatter(x=list(df.Timestamp), y=list(df.MRU01_130), name='Platform MRU heave', yaxis="y4"),
-        row=5, col=1)
 
 
     # Set title
@@ -74,7 +64,7 @@ def plot_heave_gain(df):
                 ])
             ),
             type="date"
-        ), xaxis5_rangeslider_visible=True, xaxis5_rangeslider_thickness=0.1
+        ), xaxis3_rangeslider_visible=True, xaxis3_rangeslider_thickness=0.1
     )
 
     fig.show()
@@ -96,25 +86,19 @@ def filter_system_status(df):
     # 4 is compensation
 
     # nofilter
-    df = df[(df['PLC58_System_Mode'] == 4)]
+    df = df[(df['PLC58_System_Mode'] >= 0)]
     return df
 
 
 # In this case a specific timerange will be loaded from the csv available in the datafolder
 
 # userinput
-start = '2019-04-16 02:45:00'
-end = '2019-04-20 11:00:00'
-
-
-start = '2019-05-01 00:00:00'
-end = '2019-06-01 00:00:00'
-
+start = '2019-04-13 22:10:00'
+end = '2019-04-13 22:45:00'
 datafolder = '../data/'
 
 # load the data
-# , ff=filter_system_status
-df = load_datarange(start, end, datafolder=datafolder)
+df = load_datarange(start, end, datafolder=datafolder, ff=filter_system_status)
 print('Finished loading, now plotting')
 
 df['cyl1_vel'] = df['PLC35_Cyl1_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
@@ -125,19 +109,9 @@ df['sum_cyl_vel'] = df['cyl1_vel'] + df['cyl2_vel'] + df['cyl3_vel']
 df['sum_heave_vel'] = 3 * df['PLC02_MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
 
 print('UR for this sample is {:.0f} procent'.format(100 * 1260 / 3 / df['sum_cyl_vel'].std()))
-print('UR for this sample is {:.0f} procent'.format(100 * 1260 / 3 / df['sum_heave_vel'].std()))
-
-# plot histogram
-hist, bins = np.histogram(df['PLC18_Heave_Gain_DC'], bins=np.arange(0.3, 1+0.15, 0.05))
-fig, ax = plt.subplots(1, 1, figsize=(10, 4))
-ax.bar(bins[:-1], hist.astype(np.float32) / hist.sum(), width=(bins[1] - bins[0]), color='grey')
-ax.set_title('Normalized histogram of heave gain DC')
-ax.set_ylabel('number of datapoints, normalized')
-ax.set_xlabel('heave gain DC')
-
 
 # restrict the number of datapoints to plot, otherwise plotting will be too slow.
-max_data_point_to_plot = 100000
+max_data_point_to_plot = 50000
 n = len(df.Timestamp)
 if n > max_data_point_to_plot:
     a = np.linspace(0, len(df.Timestamp) - 1, max_data_point_to_plot).astype(int)

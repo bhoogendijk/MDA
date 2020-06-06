@@ -102,7 +102,6 @@ def read_csv(file, save_feather_folder='feather/', save_to_feather=True):
 
 def load(filenames=False, initialdir="../data", save_feather_folder='feather/', save_to_feather=True,
          ff=lambda df: df):
-
     # if the user does not give any filenames, a file dialog will be shown in which the user can select the files
     # required
     if not filenames:
@@ -125,7 +124,7 @@ def load(filenames=False, initialdir="../data", save_feather_folder='feather/', 
             # the feather file is available, it will be read to get the data quicker
             frame = pd.read_feather(fullpath)
 
-        #set the Timestamp as the pandas index
+        # set the Timestamp as the pandas index
         frame = frame.set_index(frame['Timestamp'])
 
         # apply the filter function to this pandas dataframe. If no filter is given, the default lambda function is just
@@ -187,3 +186,94 @@ def get_AS10_filenames_datarange(start, end, folder='../data/'):
                 pathname = os.path.join(folder, filename)
                 li.append(pathname)
     return li
+
+
+def post_process(df):
+    df['MRU01_130'] *= 1000
+
+    mapping = {
+        'PLC24_EM1_Running': 'EM1_Running',
+        'PLC25_EM2_Running': 'EM2_Running',
+        'PLC26_EM3_Running': 'EM3_Running',
+        'PLC27_EM4_Running': 'EM4_Running',
+        'PLC28_EM5_Running': 'EM5_Running',
+        'PLC29_EM6_Running': 'EM6_Running',
+        'PLC30_EM7_Running': 'EM7_Running',
+        'PLC57_Freeze_Retract': 'Freeze_Retract',
+        'PLC60_Gen1_Running': 'Gen1_Running',
+        'PLC61_Gen2_Running': 'Gen2_Running',
+        'PLC62_Gen3_Running': 'Gen3_Running',
+        'PLC64_MRU1_Stable': 'MRU1_Stable',
+        'PLC65_MRU2_Stable': 'MRU2_Stable',
+        'PLC66_MRU3_Stable': 'MRU3_Stable',
+        'PLC68_OBL_Mode': 'OBL_Mode',
+        'MRU01_060': '060',
+        'MRU01_061': '061',
+        'MRU01_062': '062',
+        'MRU01_063': '063',
+        'MRU01_063_DEG_SHIP': 'MRUp_Roll',
+        'MRU01_064': '064',
+        'MRU01_064_DEG_SHIP': 'MRUp_Pitch',
+        'MRU01_065': '065',
+        'MRU01_130': 'MRUp_Heave',
+        'MRU01_131': '131',
+        'MRU01_300': '300',
+        'MRU01_301': '301',
+        'MRU01_302': '302',
+        'MRU01_303': '303',
+        'MRU01_304': '304',
+        'MRU01_305': '305',
+        'MRU01_314': '314',
+        'MRU01_324': '324',
+        'MRU01_325': '325',
+        'MRU01_326': '326',
+        'MRU01_336': '336',
+        'PLC00_MRU1_Roll': 'MRU1_Roll',
+        'PLC01_MRU1_Pitch': 'MRU1_Pitch',
+        'PLC02_MRU1_Heave': 'MRU1_Heave',
+        'PLC03_Spare_1': 'Spare_1',
+        'PLC05_MRU2_Roll': 'MRU2_Roll',
+        'PLC06_MRU2_Pitch': 'MRU2_Pitch',
+        'PLC07_MRU2_Heave': 'MRU2_Heave',
+        'PLC08_Spare_3': 'Spare_3',
+        'PLC10_MRU3_Roll': 'MRU3_Roll',
+        'PLC11_MRU3_Pitch': 'MRU3_Pitch',
+        'PLC12_MRU3_Heave': 'MRU3_Heave',
+        'PLC13_Spare_5': 'Spare_5',
+        'PLC16_Heave_Gain_Stroke': 'Heave_Gain_Stroke',
+        'PLC17_Heave_Gain_Speed': 'Heave_Gain_Speed',
+        'PLC18_Heave_Gain_DC': 'Heave_Gain_DC',
+        'PLC19_Heave_Offset_Neutral': 'Heave_Offset_Neutral',
+        'PLC20_HPU_Press': 'HPU_Press',
+        'PLC21_HPU_Temp_Oil_1': 'HPU_Temp_Oil_1',
+        'PLC22_HPU_Temp_Oil_2': 'HPU_Temp_Oil_2',
+        'PLC23_HPU_Temp_Air': 'HPU_Temp_Air',
+        'PLC35_Cyl1_Pos_Ideal': 'Cyl1_Pos_Ideal',
+        'PLC36_Cyl2_Pos_Ideal': 'Cyl2_Pos_Ideal',
+        'PLC37_Cyl3_Pos_Ideal': 'Cyl3_Pos_Ideal',
+        'PLC38_Cyl1_Pres_Rod': 'Cyl1_Pres_Rod',
+        'PLC39_Cyl2_Pres_Rod': 'Cyl2_Pres_Rod',
+        'PLC40_Cyl3_Pres_Rod': 'Cyl3_Pres_Rod',
+        'PLC41_Cyl1_Pres_Bot': 'Cyl1_Pres_Bot',
+        'PLC42_Cyl2_Pres_Bot': 'Cyl2_Pres_Bot',
+        'PLC43_Cyl3_Pres_Bot': 'Cyl3_Pres_Bot',
+        'PLC44_Cyl1_Pres_Pas': 'Cyl1_Pres_Pas',
+        'PLC45_Cyl2_Pres_Pas': 'Cyl2_Pres_Pas',
+        'PLC46_Cyl3_Pres_Pas': 'Cyl3_Pres_Pas',
+        'PLC32_Cyl1_Pos_CIMS': 'Cyl1_Pos_CIMS',
+        'PLC33_Cyl2_Pos_CIMS': 'Cyl2_Pos_CIMS',
+        'PLC34_Cyl3_Pos_CIMS': 'Cyl3_Pos_CIMS',
+        'PLC48_PassAccu1_Pos': 'PassAccu1_Pos',
+        'PLC49_PassAccu2_Pos': 'PassAccu2_Pos',
+        'PLC50_PassAccu3_Pos': 'PassAccu3_Pos',
+        'PLC51_ActAccu1_Pres': 'ActAccu1_Pres',
+        'PLC52_ActAccu2_Pres': 'ActAccu2_Pres',
+        'PLC53_ActAccu3_Pres': 'ActAccu3_Pres',
+        'PLC56_Utilisation_Ratio': 'Utilisation_Ratio',
+        'PLC58_System_Mode': 'System_Mode',
+        'PLC59_Active_Control_Loop': 'Active_Control_Loop',
+        'PLC63_Gen_Fuel': 'Gen_Fuel',
+        'PLC71_OBL_Angle_Orientation': 'OBL_Angle_Orientation'
+    }
+    df = df.rename(columns=mapping)
+    return df
