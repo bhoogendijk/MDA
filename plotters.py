@@ -2,11 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def UR_criteria(df, ax2=False):
+def UR_criteria(df, share_x_axes_with=False):
     fig, ax = plt.subplots(3, 2, sharex=True)
 
-    if ax2:
-        ax.get_shared_x_axes().join(ax, ax2)
+    if share_x_axes_with:
+        ax.get_shared_x_axes().join(ax, share_x_axes_with)
 
     # Duty cycle
     df.plot(ax=ax[0, 0], y='Duty_Cycle', x='Timestamp', kind='line')
@@ -48,12 +48,12 @@ def UR_criteria(df, ax2=False):
     return fig, ax
 
 
-def RPH(df, ax2=False):
+def RPH(df, share_x_axes_with=False):
     fig, ax = plt.subplots(3, 2, sharex=True, sharey='row')
 
     # Share the X axis with another plot
-    if ax2 is not False:
-        ax2[0, 0].get_shared_x_axes().join(ax2[0, 0], ax[0, 0])
+    if share_x_axes_with is not False:
+        share_x_axes_with[0, 0].get_shared_x_axes().join(share_x_axes_with[0, 0], ax[0, 0])
 
     # Share the Y axis between the roll and pitch values
     ax[0, 0].get_shared_y_axes().join(ax[0, 0], ax[1, 0])

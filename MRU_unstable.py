@@ -2,8 +2,11 @@ import helpers, plotters
 import matplotlib.pyplot as plt
 from dateutil import parser
 import numpy as np
+import pandas as pd
 
 
+# define filters. These will be used to only load the data the are within the filters. Filters are applied by giving
+# them as a variable to the loading function
 def filter_heavelim(df):
     heavelim = 500  # mm
     df = df[(df['MRU1_Heave'] <= -heavelim) | (df['MRU1_Heave'] >= heavelim) | (
@@ -17,6 +20,8 @@ def filter_system_status(df):
     return df
 
 
+# Define the timeframes. The script will loop through each timeframe seperately. It loads the data it finds that is
+# within the timeframe (and the filter). Then code, such as plotting, is applied to the loaded data.
 timeframes = [
     {'start': '2016-09-21 02:00', 'end': '2016-09-21 15:00'},
     {'start': '2016-10-23 21:00', 'end': '2016-10-24 18:00'},
@@ -50,58 +55,93 @@ timeframes = [
     {'start': '2019-06-07 00:00', 'end': '2019-06-10 00:00'},
     {'start': '2019-06-10 08:00', 'end': '2019-06-11 12:00'},
     {'start': '2019-06-13 12:00', 'end': '2019-06-17 02:00'},
-
 ]
 
-run = 0
-save = True
+# timeframes = timeframes[0:2]
+
+datafolder = '../data/'  # data folder in which the data is searched for. default is '../data/'
+
+max_data_point_to_plot = 50000  # Removes data to for quick plotting at the cost of level of detail at high zoom levels
+reduce_plot_datapoints = False # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
+
+plot_UR = False  # plot the UR figure
+plot_RPH = False  # plot the RPH figure
+plot_histogram = False  # plot the heave gain histogram figure
+
+save_figures = False  # save  the figures that are plotted
+show_figures = False  # show  the figures that are plotted
+
+save_key_values = True
+filename_key_values = './key_values.csv'
+
+key_values_list = []
+# code execution
+run_counter = 0
 for timeframe in timeframes:
-    run += 1
+    run_counter += 1
+
+    # LOADING THE DATA
     start = timeframe['start']
     end = timeframe['end']
-
-    # load the data
-    df = helpers.load_datarange(start, end, ff=filter_system_status)
+    df = helpers.load_datarange(start, end, ff=filter_system_status, datafolder=datafolder)
     print('loading data completed')
+
+    # CALCULATE ADDITIONAL INFORMATION ABOUT LOADED DATA
 
     # calculate cylinder velocities and duty cycle
     df = helpers.add_derivative_data(df)
 
-    # print UR
-    helpers.calculate_UR(df, print_to_cli=True)
+    # calculate active heave gain and UR, combine them in one key values dict
+    key_values = {'Heave_Gain_Active': (df['Heave_Gain'][df['Heave_Gain'] < 1]).count() / float(len(df)) * 100.0}
+    UR = helpers.calculate_UR(df)
+    key_values.update(UR)
+    key_values_list.append(key_values)
+    print(f'The calculated UR of this sample is {key_values["UR"]:.0f} percent. '
+          f'The average UR from the data is {key_values["UR_Data_Mean"]:.0f} percent. '
+          f'The heave gain is active {key_values["Heave_Gain_Active"]:.2f} percent of the time')
 
-    max_data_point_to_plot = 100000
-    n = len(df.Timestamp)
-    if n > max_data_point_to_plot:
-        a = np.linspace(0, len(df.Timestamp) - 1, max_data_point_to_plot).astype(int)
-        df_for_plot = df.iloc[a]
-        df = None
-        print('Reduced the number of datapoints in loaded dataset for plotting by a factor of {:.1f}'.format(
-            n / max_data_point_to_plot))
-    else:
-        df_for_plot = df
+    # PLOTTING SECTION
+    if reduce_plot_datapoints:
+        n = len(df.Timestamp)
+        if n > max_data_point_to_plot:
+            a = np.linspace(0, len(df.Timestamp) - 1, max_data_point_to_plot).astype(int)
+            df = df.iloc[a]
+            print('Reduced the number of datapoints in loaded dataset for plotting by a factor of {:.1f}'.format(
+                n / max_data_point_to_plot))
 
+    # Create filenames for the figures
     sf = parser.parse(start)
     ef = parser.parse(end)
-    savename = f"run {run} {sf.strftime('%Y-%m-%d %H%M')} till {ef.strftime('%Y-%m-%d %H%M')} "
+    savename = f"run {run_counter} {sf.strftime('%Y-%m-%d %H%M')} till {ef.strftime('%Y-%m-%d %H%M')} "
     savenameUR = 'plots/' + savename + 'UR.png'
     savenameRPH = 'plots/' + savename + 'RPH.png'
 
     # plot the data
-    figur, axur = plotters.UR_criteria(df_for_plot)
-    figur.set_size_inches(19, 12.8)
+    if plot_UR:
+        figur, axur = plotters.UR_criteria(df)
+        figur.set_size_inches(19, 12.8)
+        if save_figures: plt.savefig(savenameUR, bbox_inches='tight', dpi=100)
 
-    if save: plt.savefig(savenameUR, bbox_inches='tight', dpi=100)
+    if plot_RPH:
+        # the x axis will can shared between UR and RPH. This allows zooming in UR to reflect in RPH and vice versa.
+        figRPH, axRPH = plotters.RPH(df, share_x_axes_with=axur)
+        figRPH.set_size_inches(19, 12.8)
+        if save_figures: plt.savefig(savenameRPH, bbox_inches='tight', dpi=100)
 
-    figRPH, axRPH = plotters.RPH(df_for_plot, axur)
-    figRPH.set_size_inches(19, 12.8)
-    if save: plt.savefig(savenameRPH, bbox_inches='tight', dpi=100);
+    if plot_histogram:
+        figHist, axHist = plotters.heave_gain_histogram(df)
 
-    # plotters.heave_gain_histogram(df)
+    # show the plots
+    if show_figures: plt.show()
 
-    # plt.show()
+    # clear memory and close the figures
+    # Since the x-axis is shared between the figures, first both figures must be cleared before any one of them can be
+    # closed
+    if plot_RPH: figRPH.clf()
+    if plot_UR: figur.clf()
+    if plot_UR: plt.close(figur)
+    if plot_RPH: plt.close(figRPH)
+    if plot_histogram: figHist.clf();plt.close(figHist)
 
-    figur.clf()
-    plt.close(figur)
-    figRPH.clf()
-    plt.close(figRPH)
+key_values = pd.DataFrame(key_values_list)
+if save_key_values: key_values.to_csv(filename_key_values)
