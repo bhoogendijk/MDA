@@ -62,16 +62,16 @@ timeframes = [
 datafolder = '../data/'  # data folder in which the data is searched for. default is '../data/'
 
 max_data_point_to_plot = 50000  # Removes data to for quick plotting at the cost of level of detail at high zoom levels
-reduce_plot_datapoints = False # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
+reduce_plot_datapoints = True  # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
 
-plot_UR = False  # plot the UR figure
-plot_RPH = False  # plot the RPH figure
+plot_UR = True  # plot the UR figure
+plot_RPH = True  # plot the RPH figure
 plot_histogram = False  # plot the heave gain histogram figure
 
 save_figures = False  # save  the figures that are plotted
-show_figures = False  # show  the figures that are plotted
+show_figures = True  # show  the figures that are plotted
 
-save_key_values = True
+save_key_values = False
 filename_key_values = './key_values.csv'
 
 key_values_list = []
