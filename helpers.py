@@ -21,7 +21,6 @@ def read_csv(file):
                                  second=df['S_Seconds'].values[0]) + \
                     timedelta(seconds=df['Time_Msec_Current_010'].values[i])
         timestamps.append(timestamp)
-    print(file)
     df.insert(175, "Timestamp", timestamps,
               allow_duplicates=False)  # Add a new 176th column with all the timestamps
     # Drop columns that have no information
@@ -41,7 +40,7 @@ def read_csv(file):
         'PLC15_Spare_7', 'PLC47_Spare_10', 'PLC54_Spare_11', 'PLC55_Spare_12', 'PLC67_Spare_13', 'PLC72_Time',
         'PLC74_Spare_14', 'PLC75_Spare_15']
 
-    if 'PLC31_Heartbeat' in df: columns_to_drop.append('PLC31_Heartbeat') #this only exist in data from limetree
+    if 'PLC31_Heartbeat' in df: columns_to_drop.append('PLC31_Heartbeat')  # this only exist in data from limetree
     if 'PLC31_Spare_9' in df: columns_to_drop.append("PLC31_Spare_9")  # this only exist in data before limetree
 
     df = df.drop(columns=columns_to_drop)
@@ -182,6 +181,7 @@ def read_csv(file):
     }
     df = df.rename(columns=mapping)
     return df
+
 
 def read_csv_bm001(file):
     # TODO: work in progress. Needs to be adjusted to read BM001 data types and convert to same format as BM003
@@ -197,7 +197,6 @@ def read_csv_bm001(file):
                                  second=df['S_Seconds'].values[0]) + \
                     timedelta(seconds=df['Time_Msec_Current_010'].values[i])
         timestamps.append(timestamp)
-    print(file)
     df.insert(175, "Timestamp", timestamps,
               allow_duplicates=False)  # Add a new 176th column with all the timestamps
     # Drop columns that have no information
@@ -217,7 +216,7 @@ def read_csv_bm001(file):
         'PLC15_Spare_7', 'PLC47_Spare_10', 'PLC54_Spare_11', 'PLC55_Spare_12', 'PLC67_Spare_13', 'PLC72_Time',
         'PLC74_Spare_14', 'PLC75_Spare_15']
 
-    if 'PLC31_Heartbeat' in df: columns_to_drop.append('PLC31_Heartbeat') #this only exist in data from limetree
+    if 'PLC31_Heartbeat' in df: columns_to_drop.append('PLC31_Heartbeat')  # this only exist in data from limetree
     if 'PLC31_Spare_9' in df: columns_to_drop.append("PLC31_Spare_9")  # this only exist in data before limetree
 
     df = df.drop(columns=columns_to_drop)
@@ -358,7 +357,6 @@ def read_csv_bm001(file):
     }
     df = df.rename(columns=mapping)
     return df
-
 
 
 def load(filenames=False, initialdir="../data", save_feather_folder='feather/', save_to_feather=True,
@@ -392,7 +390,6 @@ def load(filenames=False, initialdir="../data", save_feather_folder='feather/', 
             # the feather file is available, it will be read to get the data quicker
             frame = pd.read_feather(fullpath)
 
-
         # Index is not saved by feather, hence it is always set after loading the frame
         frame.set_index(frame['Timestamp'], inplace=True)
 
@@ -405,12 +402,10 @@ def load(filenames=False, initialdir="../data", save_feather_folder='feather/', 
 
     # set the Timestamp as the pandas index
 
-
     # create one pandas frame from the list and sort the values according to timestamp
     df = pd.concat(li, axis=0, ignore_index=True)
     df = df.sort_values(['Timestamp'], ascending=[True])  # sorting values
     # df.set_index(df['Timestamp'], inplace=True)
-
 
     return df
 
@@ -429,6 +424,7 @@ def load_datarange(startdate, enddate, datafolder='../data/', save_feather_folde
     # give the loading task to the loading function with the correct filenames and adjusted datarange filter
     return load(filenames=filenames, save_feather_folder=save_feather_folder, save_to_feather=save_to_feather,
                 ff=combined_filter_function)
+
 
 def get_AS10_filenames_datarange(start, end, folder='../data/'):
     # this functions looks at all the AS10 type files in the specified folder and checks if it falls within a
@@ -456,6 +452,7 @@ def get_AS10_filenames_datarange(start, end, folder='../data/'):
                 pathname = os.path.join(folder, filename)
                 li.append(pathname)
     return li
+
 
 # below function is written to handle reading BM001 files which have a different naming structure. It is not yet in use.
 def get_BM10_filenames_datarange(start, end, folder='../data/'):
@@ -485,8 +482,8 @@ def get_BM10_filenames_datarange(start, end, folder='../data/'):
                 li.append(pathname)
     return li
 
-def add_derivative_data(df):
 
+def add_derivative_data(df):
     # minimum of heave gain
     df['Heave_Gain'] = df[['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed']].min(axis=1)
 
@@ -499,8 +496,8 @@ def add_derivative_data(df):
 
     return df
 
-def calculate_UR(df, print_to_cli=False):
 
+def calculate_UR(df, print_to_cli=False):
     # calculated UR's are only applicable with the following assumptions:
     # - No pump failure or pump turned off (or HPU turned off)
     # - Reduction in heave stroke due to offset in neutral point of compensation not accounted for
@@ -510,9 +507,9 @@ def calculate_UR(df, print_to_cli=False):
     UR_Cyl2_Vel = 100 * 3 * df['Cyl2_Vel_Ideal'].std() / 736
     UR_Cyl3_Vel = 100 * 3 * df['Cyl3_Vel_Ideal'].std() / 736
 
-    UR_Cyl1_Amp = 100 * 3 * (df['Cyl1_Pos_Ideal']-df['Heave_Offset_Neutral']).std() / 1100
-    UR_Cyl2_Amp = 100 * 3 * (df['Cyl2_Pos_Ideal']-df['Heave_Offset_Neutral']).std() / 1100
-    UR_Cyl3_Amp = 100 * 3 * (df['Cyl3_Pos_Ideal']-df['Heave_Offset_Neutral']).std() / 1100
+    UR_Cyl1_Amp = 100 * 3 * (df['Cyl1_Pos_Ideal'] - df['Heave_Offset_Neutral']).std() / 1100
+    UR_Cyl2_Amp = 100 * 3 * (df['Cyl2_Pos_Ideal'] - df['Heave_Offset_Neutral']).std() / 1100
+    UR_Cyl3_Amp = 100 * 3 * (df['Cyl3_Pos_Ideal'] - df['Heave_Offset_Neutral']).std() / 1100
 
     UR_Duty_Cycle_Heave = 100 * 3 * df['Duty_Cycle_Heave'].std() / 1260
 
@@ -521,16 +518,16 @@ def calculate_UR(df, print_to_cli=False):
     UR = max(UR_Duty_Cycle, UR_Cyl1_Amp, UR_Cyl2_Amp, UR_Cyl3_Amp, UR_Cyl1_Vel, UR_Cyl2_Vel, UR_Cyl3_Vel)
 
     UR_lib = {
-    'UR':UR,
-    'UR_Duty_Cycle':UR_Duty_Cycle,
-    'UR_Cyl1_Vel':UR_Cyl1_Vel,
-    'UR_Cyl2_Vel':UR_Cyl2_Vel,
-    'UR_Cyl3_Vel':UR_Cyl3_Vel,
-    'UR_Cyl1_Amp':UR_Cyl1_Amp,
-    'UR_Cyl2_Amp':UR_Cyl2_Amp,
-    'UR_Cyl3_Amp':UR_Cyl3_Amp,
-    'UR_Duty_Cycle_Heave':UR_Duty_Cycle_Heave,
-    'UR_Data_Mean': UR_Data_Mean
+        'UR': UR,
+        'UR_Duty_Cycle': UR_Duty_Cycle,
+        'UR_Cyl1_Vel': UR_Cyl1_Vel,
+        'UR_Cyl2_Vel': UR_Cyl2_Vel,
+        'UR_Cyl3_Vel': UR_Cyl3_Vel,
+        'UR_Cyl1_Amp': UR_Cyl1_Amp,
+        'UR_Cyl2_Amp': UR_Cyl2_Amp,
+        'UR_Cyl3_Amp': UR_Cyl3_Amp,
+        'UR_Duty_Cycle_Heave': UR_Duty_Cycle_Heave,
+        'UR_Data_Mean': UR_Data_Mean
     }
 
     if print_to_cli:
@@ -546,3 +543,5 @@ def calculate_UR(df, print_to_cli=False):
         print('UR_Data_Mean is {:.0f} percent'.format(UR_Data_Mean))
 
     return UR_lib
+
+

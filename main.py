@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from dateutil import parser
 import numpy as np
 import pandas as pd
-
+import mplcursors
 
 # define filters. These will be used to only load the data the are within the filters. Filters are applied by giving
 # them as a variable to the loading function
@@ -64,12 +64,13 @@ datafolder = '../data/'  # data folder in which the data is searched for. defaul
 max_data_point_to_plot = 50000  # Removes data to for quick plotting at the cost of level of detail at high zoom levels
 reduce_plot_datapoints = True  # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
 
-plot_UR = True  # plot the UR figure
-plot_RPH = True  # plot the RPH figure
+plot_UR = False  # plot the UR figure
+plot_RPH = False  # plot the RPH figure
 plot_histogram = False  # plot the heave gain histogram figure
+plot_heave_gain_roll = True
 
-save_figures = False  # save  the figures that are plotted
-show_figures = True  # show  the figures that are plotted
+save_figures = True  # save  the figures that are plotted
+show_figures = False  # show  the figures that are plotted
 
 save_key_values = False
 filename_key_values = './key_values.csv'
@@ -84,6 +85,7 @@ for timeframe in timeframes:
     start = timeframe['start']
     end = timeframe['end']
     df = helpers.load_datarange(start, end, ff=filter_system_status, datafolder=datafolder)
+    # df = helpers.load()
     print('loading data completed')
 
     # CALCULATE ADDITIONAL INFORMATION ABOUT LOADED DATA
@@ -115,11 +117,13 @@ for timeframe in timeframes:
     savename = f"run {run_counter} {sf.strftime('%Y-%m-%d %H%M')} till {ef.strftime('%Y-%m-%d %H%M')} "
     savenameUR = 'plots/' + savename + 'UR.png'
     savenameRPH = 'plots/' + savename + 'RPH.png'
+    savenameHGR = 'plots/' + savename + 'HGR.png'
 
     # plot the data
     if plot_UR:
         figur, axur = plotters.UR_criteria(df)
         figur.set_size_inches(19, 12.8)
+        mplcursors.cursor()
         if save_figures: plt.savefig(savenameUR, bbox_inches='tight', dpi=100)
 
     if plot_RPH:
@@ -131,6 +135,11 @@ for timeframe in timeframes:
     if plot_histogram:
         figHist, axHist = plotters.heave_gain_histogram(df)
 
+    if plot_heave_gain_roll:
+        figHGR, axHGR = plotters.heave_gain_roll(df)
+        figHGR.set_size_inches(19, 12.8)
+        if save_figures: plt.savefig(savenameHGR, bbox_inches='tight', dpi=100)
+
     # show the plots
     if show_figures: plt.show()
 
@@ -139,8 +148,10 @@ for timeframe in timeframes:
     # closed
     if plot_RPH: figRPH.clf()
     if plot_UR: figur.clf()
+    if plot_heave_gain_roll: figHGR.clf()
     if plot_UR: plt.close(figur)
     if plot_RPH: plt.close(figRPH)
+    if plot_heave_gain_roll: plt.close(figHGR)
     if plot_histogram: figHist.clf();plt.close(figHist)
 
 key_values = pd.DataFrame(key_values_list)
