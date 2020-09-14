@@ -494,6 +494,24 @@ def add_derivative_data(df):
     df['Duty_Cycle'] = df['Cyl1_Vel_Ideal'].abs() + df['Cyl2_Vel_Ideal'].abs() + df['Cyl3_Vel_Ideal'].abs()
     df['Duty_Cycle_Heave'] = 3 * df['MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
 
+    area_active = 0.053  # m2
+    inefficiency = 0.9
+    idle_power = 450  # kW
+
+    P_pump_max = 1511  # kW
+
+    df['Power_Consumption'] = df['Cyl1_Vel_Ideal'].abs() + df['Cyl2_Vel_Ideal'].abs() + df['Cyl3_Vel_Ideal'].abs() * \
+                              df['HPU_Press'] * 3 / 10 * area_active / inefficiency
+
+    df['Power_Consumption_unaltered'] = df['Cyl1_Vel_Ideal'].abs() + df['Cyl2_Vel_Ideal'].abs() + df[
+        'Cyl3_Vel_Ideal'].abs() * \
+                                        df['HPU_Press'] * 3 / 10 * area_active / inefficiency
+
+
+    df['Power_Consumption'][df['Power_Consumption'] <= idle_power] = idle_power
+    df['Power_Consumption'][df['Power_Consumption'] >= P_pump_max] = P_pump_max
+    df['Power_Consumption'][df['HPU_Press'] <= 308] = P_pump_max
+
     return df
 
 
@@ -543,5 +561,3 @@ def calculate_UR(df, print_to_cli=False):
         print('UR_Data_Mean is {:.0f} percent'.format(UR_Data_Mean))
 
     return UR_lib
-
-

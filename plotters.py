@@ -182,3 +182,36 @@ def heave_gain_histogram(df):
     ax.set_ylabel('number of datapoints, normalized')
     ax.set_xlabel('heave gain DC')
     return fig, ax
+
+def power_consumption(df):
+    fig, ax = plt.subplots(1, 1, sharex=True)
+
+    ax = [ax]
+    # Power Consumption
+    df.plot(ax=ax[0], y='Power_Consumption', x='Timestamp', kind='line')
+    # df.plot(ax=ax[0], y='Power_Consumption_unaltered', x='Timestamp', kind='line', ls='--')
+    ax[0].set_ylabel('Power consumption [kW]')
+    dl = ax[0].axhline(df['Power_Consumption'].mean(), color='blue', ls='--')
+    dl.set_label(f'Average power ({df["Power_Consumption"].mean():.0f} kW)')
+    d2 = ax[0].axhline(1511, color='black', ls='--')
+    d2.set_label('Power limit')
+    ax[0].legend(loc='best')
+    #
+    # # Duty cycle
+    # df.plot(ax=ax[1], y='Duty_Cycle', x='Timestamp', kind='line')
+    # ax[1].set_ylabel('Cylinders abs vel. sum[mm/s]')
+    # dl = ax[1].axhline(1260, color='black', ls='--')
+    # dl.set_label('Duty cycle limit')
+    # ax[1].legend(loc='best')
+    #
+    # # Pressure
+    # df.plot(ax=ax[2], y='HPU_Press', x='Timestamp', kind='line')
+    # ax[2].set_ylabel('HPU_Pressure')
+    #
+    # # UR
+    # df.plot(ax=ax[3], y='Utilisation_Ratio', x='Timestamp', kind='line')
+    # ax[3].set_ylabel('UR [%]')
+
+
+    return fig, ax
+
