@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+from itertools import chain
 
 def UR_criteria(df, share_x_axes_with=False):
     fig, ax = plt.subplots(3, 2, sharex=True)
@@ -40,7 +40,7 @@ def UR_criteria(df, share_x_axes_with=False):
     df.plot(ax=ax[1, 1], y='Utilisation_Ratio', x='Timestamp', kind='line')
     ax[1, 1].set_ylabel('UR [%]')
 
-    # Heave gain
+    # HeaveGain
     df.plot(ax=ax[2, 1], y=['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed'], x='Timestamp',
             kind='line')
     ax[2, 1].set_ylabel('gain [-]')
@@ -112,7 +112,7 @@ def heave_gain_roll(df, share_x_axes_with=False):
     df.plot(ax=ax[1, 1], y=['MRU1_Roll', 'MRU2_Roll', 'MRU3_Roll'], x='Timestamp', kind='line')
     ax[1, 1].set_ylabel('Roll [deg]')
 
-    # Heave gain
+    # HeaveGain
     df.plot(ax=ax[2, 1], y=['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed'], x='Timestamp',
             kind='line')
     ax[2, 1].set_ylabel('gain [-]')
@@ -161,12 +161,12 @@ def heave_gain(df, share_x_axes_with=False):
     df.plot(ax=ax[2, 1], y=['MRU1_Pitch', 'MRU2_Pitch', 'MRU3_Pitch'], x='Timestamp', kind='line')
     ax[1, 1].set_ylabel('Pitch [deg]')
 
-    # Heave gain
+    # HeaveGain
     df.plot(ax=ax[3, 1], y=['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed'], x='Timestamp',
             kind='line')
     ax[2, 1].set_ylabel('gain [-]')
 
-    # Heave gain
+    # HeaveGain
     df.plot(ax=ax[3, 0], y=['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed'], x='Timestamp',
             kind='line')
     ax[2, 1].set_ylabel('gain [-]')
@@ -211,6 +211,20 @@ def power_consumption(df):
     # # UR
     # df.plot(ax=ax[3], y='Utilisation_Ratio', x='Timestamp', kind='line')
     # ax[3].set_ylabel('UR [%]')
+
+
+    return fig, ax
+
+def plot_easy(df,variables,ylabels,sharex=True,sharey=False):
+    
+    nrow,ncol = len(variables),len(variables[0])
+    fig, ax = plt.subplots(nrow, ncol, sharex=sharex,sharey=sharey)
+
+    for i, row in enumerate(variables):
+        for j, elem in enumerate(row):
+            df.plot(ax=ax[i,j], y=elem, x='Timestamp', kind='line')
+            ax[i,j].set_ylabel(ylabels[i][j])
+
 
 
     return fig, ax

@@ -6,6 +6,7 @@ import numpy as np
 import os.path
 from datetime import datetime, timedelta
 from dateutil import parser
+from scipy.signal import savgol_filter
 
 
 def read_csv(file):
@@ -33,7 +34,7 @@ def read_csv(file):
         'BOX_BAT_TIME_HOUR', 'YMD_HMS', '_TimeStampLow', 'MRU01_010', 'MRU02_063_DEG', 'MRU02_063_DEG_SHIP',
         'MRU02_064_DEG', 'MRU02_064_DEG_SHIP', 'MRU02_065_DEG', 'MRU02_065_DEG_SHIP', 'MRU02_336_SHIP',
         'Acc_Mp1_x', 'Acc_Mp1_y', 'Acc_Mp1_z', 'MRU01_011', 'MRU01_064_DEG', 'MRU01_065_DEG',
-        'MRU01_065_DEG_SHIP', 'MRU01_132', 'MRU01_202', 'MRU01_336_SHIP', 'MRU02_010', 'MRU02_011', 'MRU02_060',
+        'MRU01_065_DEG_SHIP', 'MRU01_132', 'MRU01_336_SHIP', 'MRU02_010', 'MRU02_011', 'MRU02_060',
         'MRU02_061', 'MRU02_062', 'MRU02_063', 'MRU02_064', 'MRU02_065', 'MRU02_130', 'MRU02_131', 'MRU02_132',
         'MRU02_173', 'MRU02_300', 'MRU02_301', 'MRU02_302', 'MRU02_303', 'MRU02_304', 'MRU02_305', 'MRU02_314',
         'MRU02_324', 'MRU02_325', 'MRU02_326', 'MRU02_336', 'PLC04_Spare_2', 'PLC09_Spare_4', 'PLC14_Spare_6',
@@ -93,7 +94,8 @@ def read_csv(file):
 
     # Change the 'units'
     df['MRU01_130'] *= 1000  # Platform heave in meters to heave in mm
-
+    df['MRU01_314'] *= 1000 # Platform heave velocity in m/s to mm/s
+    df['MRU01_131'] *= 1000 # Platform heave velocity in MP2 in m/s to mm/s
     # MAP to new better understandable names
     mapping = {
         'PLC24_EM1_Running': 'EM1_Running',
@@ -120,14 +122,14 @@ def read_csv(file):
         'MRU01_064_DEG_SHIP': 'MRUp_Pitch',
         'MRU01_065': '065',
         'MRU01_130': 'MRUp_Heave',
-        'MRU01_131': '131',
+        'MRU01_131': 'Platform_Heave_MRU4MP2_vel', #likely incorrect, it is unknown what signal is MP2 and MP1
         'MRU01_300': '300',
         'MRU01_301': '301',
         'MRU01_302': '302',
         'MRU01_303': '303',
         'MRU01_304': '304',
         'MRU01_305': '305',
-        'MRU01_314': '314',
+        'MRU01_314': 'Platform_Heave_MRU4_vel', #likely incorrect, it is unknown what signal is MP2 and MP1
         'MRU01_324': '324',
         'MRU01_325': '325',
         'MRU01_326': '326',
@@ -209,7 +211,7 @@ def read_csv_bm001(file):
         'BOX_BAT_TIME_HOUR', 'YMD_HMS', '_TimeStampLow', 'MRU01_010', 'MRU02_063_DEG', 'MRU02_063_DEG_SHIP',
         'MRU02_064_DEG', 'MRU02_064_DEG_SHIP', 'MRU02_065_DEG', 'MRU02_065_DEG_SHIP', 'MRU02_336_SHIP',
         'Acc_Mp1_x', 'Acc_Mp1_y', 'Acc_Mp1_z', 'MRU01_011', 'MRU01_064_DEG', 'MRU01_065_DEG',
-        'MRU01_065_DEG_SHIP', 'MRU01_132', 'MRU01_202', 'MRU01_336_SHIP', 'MRU02_010', 'MRU02_011', 'MRU02_060',
+        'MRU01_065_DEG_SHIP', 'MRU01_132', 'MRU01_336_SHIP', 'MRU02_010', 'MRU02_011', 'MRU02_060',
         'MRU02_061', 'MRU02_062', 'MRU02_063', 'MRU02_064', 'MRU02_065', 'MRU02_130', 'MRU02_131', 'MRU02_132',
         'MRU02_173', 'MRU02_300', 'MRU02_301', 'MRU02_302', 'MRU02_303', 'MRU02_304', 'MRU02_305', 'MRU02_314',
         'MRU02_324', 'MRU02_325', 'MRU02_326', 'MRU02_336', 'PLC04_Spare_2', 'PLC09_Spare_4', 'PLC14_Spare_6',
@@ -269,6 +271,7 @@ def read_csv_bm001(file):
 
     # Change the 'units'
     df['MRU01_130'] *= 1000  # Platform heave in meters to heave in mm
+    df['MRU01_314'] *= 1000 # Platform heave velocity in m/s to mm/s
 
     # MAP to new better understandable names
     mapping = {
@@ -303,7 +306,7 @@ def read_csv_bm001(file):
         'MRU01_303': '303',
         'MRU01_304': '304',
         'MRU01_305': '305',
-        'MRU01_314': '314',
+        'MRU01_314': 'Platform_Heave_MRU4_vel',
         'MRU01_324': '324',
         'MRU01_325': '325',
         'MRU01_326': '326',
@@ -359,7 +362,7 @@ def read_csv_bm001(file):
     return df
 
 
-def load(filenames=False, initialdir="../data", save_feather_folder='feather/', save_to_feather=True,
+def load(filenames=False, initialdir="../data", save_feather_folder='feather', save_to_feather=True,
          ff=lambda df: df):
     # if the user does not give any filenames, a file dialog will be shown in which the user can select the files
     # required
@@ -394,7 +397,7 @@ def load(filenames=False, initialdir="../data", save_feather_folder='feather/', 
         frame.set_index(frame['Timestamp'], inplace=True)
 
         # apply the filter function to this pandas dataframe. If no filter is given, the default lambda function is just
-        # a feed trough
+        # a feedtrough
 
         frame = ff(frame)
         # append the (filtered) frame to the list
@@ -405,8 +408,6 @@ def load(filenames=False, initialdir="../data", save_feather_folder='feather/', 
     # create one pandas frame from the list and sort the values according to timestamp
     df = pd.concat(li, axis=0, ignore_index=True)
     df = df.sort_values(['Timestamp'], ascending=[True])  # sorting values
-    # df.set_index(df['Timestamp'], inplace=True)
-
     return df
 
 
@@ -483,16 +484,28 @@ def get_BM10_filenames_datarange(start, end, folder='../data/'):
     return li
 
 
-def add_derivative_data(df):
+def add_derivative_data(df, rotation=270):
     # minimum of heave gain
     df['Heave_Gain'] = df[['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed']].min(axis=1)
 
+    df['MRU1_Heave'] *= -1  # BM003 uses heave moving down as positive, so we will adjust to our reference frame
+    df['MRU1_Pitch'] *= -1  # BM003 uses roll portside down down as positive, so we will adjust to our reference frame
+
+
+    window_size = 13
+    polyorder = 2
+
     # Add cylinder velocities and duty cycles
-    df['Cyl1_Vel_Ideal'] = df['Cyl1_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Cyl2_Vel_Ideal'] = df['Cyl2_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Cyl3_Vel_Ideal'] = df['Cyl3_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    y = df['Cyl1_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl1_Vel_Ideal'] = savgol_filter(y, window_size, polyorder)
+    y = df['Cyl2_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl2_Vel_Ideal'] = savgol_filter(y, window_size, polyorder)
+    y = df['Cyl3_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl3_Vel_Ideal'] = savgol_filter(y, window_size, polyorder)
+    y = 3 * df['MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Duty_Cycle_Heave'] = savgol_filter(y, window_size, polyorder)
+
     df['Duty_Cycle'] = df['Cyl1_Vel_Ideal'].abs() + df['Cyl2_Vel_Ideal'].abs() + df['Cyl3_Vel_Ideal'].abs()
-    df['Duty_Cycle_Heave'] = 3 * df['MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
 
     area_active = 0.053  # m2
     inefficiency = 0.9
@@ -507,10 +520,116 @@ def add_derivative_data(df):
         'Cyl3_Vel_Ideal'].abs() * \
                                         df['HPU_Press'] * 3 / 10 * area_active / inefficiency
 
+    df.loc[df.Power_Consumption <= idle_power, 'Power_Consumption'] = idle_power
+    df.loc[df.Power_Consumption >= P_pump_max, 'Power_Consumption'] = P_pump_max
+    df.loc[df.HPU_Press <= 308, 'Power_Consumption'] = P_pump_max
 
-    df['Power_Consumption'][df['Power_Consumption'] <= idle_power] = idle_power
-    df['Power_Consumption'][df['Power_Consumption'] >= P_pump_max] = P_pump_max
-    df['Power_Consumption'][df['HPU_Press'] <= 308] = P_pump_max
+    # Calculate the platform motions based on the CIMS values
+
+    if rotation == 270:
+        df['Platform_Roll_CIMS'] = np.arctan((1 / 2 * df['Cyl1_Pos_CIMS'] + 1 / 2 * df['Cyl2_Pos_CIMS'] - df[
+            'Cyl3_Pos_CIMS']) / 11951.1) * 180 / np.pi  # for 270 degree rotation
+        df['Platform_Pitch_CIMS'] = np.arctan(
+            (df['Cyl1_Pos_CIMS'] - df['Cyl2_Pos_CIMS']) / 13800.0) * 180 / np.pi  # for 270 degree rotation
+        df['Platform_Heave_CIMS'] = (df['Cyl1_Pos_CIMS'] + df['Cyl2_Pos_CIMS'] + df['Cyl3_Pos_CIMS']) / 3 - 1250
+    elif rotation == 0:
+        df['Platform_Pitch_CIMS'] = np.arctan((1 / 2 * df['Cyl1_Pos_CIMS'] + 1 / 2 * df['Cyl2_Pos_CIMS'] - df[
+            'Cyl3_Pos_CIMS']) / 11951.1) * 180 / np.pi  # for 0 degree rotation
+        df['Platform_Roll_CIMS'] = -np.arctan(
+            (df['Cyl1_Pos_CIMS'] - df['Cyl2_Pos_CIMS']) / 13800.0) * 180 / np.pi  # for 270 degree rotation
+        df['Platform_Heave_CIMS'] = (df['Cyl1_Pos_CIMS'] + df['Cyl2_Pos_CIMS'] + df['Cyl3_Pos_CIMS']) / 3 - 1250
+    #     TODO: add rotation 180 and 90
+    else:
+        raise("platform rotation not defined")
+
+    # Rename for clarity
+    df['Platform_Roll_MRU4'] = df['MRUp_Roll']
+    df['Platform_Pitch_MRU4'] = df['MRUp_Pitch']
+    df['Platform_Heave_MRU4'] = df['MRUp_Heave']
+
+    # Calculate the residual platform motions based on vessel motion and CIMS motions (Only works with cylinders
+    # actually moving but regardless whether on Hostsim or on skid MRU's.
+    df['Residual_Roll_CIMS'] = df['MRU1_Roll'] + df['Platform_Roll_CIMS']
+    df['Residual_Pitch_CIMS'] = df['MRU1_Pitch'] + df['Platform_Pitch_CIMS']
+    df['Residual_Heave_CIMS'] = df['MRU1_Heave'] + df['Platform_Heave_CIMS']
+
+    # Calculate the residual platform motions based on vessel motion and CIMS motions (works in simulations with
+    # cylinders actually moving, but only on Hostsim. When on skid MRU's, use the Platform_xxx_MRU4 value directly
+    df['Residual_Roll_MRU4'] = df['MRU1_Roll'] + df['Platform_Roll_MRU4']
+    df['Residual_Pitch_MRU4'] = df['MRU1_Pitch'] + df['Platform_Pitch_MRU4']
+    df['Residual_Heave_MRU4'] = df['MRU1_Heave'] + df['Platform_Heave_MRU4']
+
+    # calculate velocity derivatives
+    df['MRU1_Roll_vel_unfiltered'] = df['MRU1_Roll'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Roll_CIMS_vel_unfiltered'] = df['Platform_Roll_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Roll_MRU4_vel_unfiltered'] = df['Platform_Roll_MRU4'].diff() / df['Timestamp'].diff().dt.total_seconds()
+
+    df['MRU1_Pitch_vel_unfiltered'] = df['MRU1_Pitch'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Pitch_CIMS_vel_unfiltered'] = df['Platform_Pitch_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Pitch_MRU4_vel_unfiltered'] = df['Platform_Pitch_MRU4'].diff() / df['Timestamp'].diff().dt.total_seconds()
+
+    df['MRU1_Heave_Velocity_unfiltered'] = df['MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['MRU2_Heave_Velocity_unfiltered'] = df['MRU2_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['MRU3_Heave_Velocity_unfiltered'] = df['MRU3_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Heave_CIMS_vel_unfiltered'] = df['Platform_Heave_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    # df['Platform_Heave_MRU4_vel'] velocity already exists, no need to differentiate platform MRU heave signal
+
+    # calculate the residuals
+    df['Residual_Heave_CIMS_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] + df['Platform_Heave_CIMS_vel_unfiltered']
+    df['Residual_Heave_MRU4_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] - df['Platform_Heave_MRU4_vel']
+
+    # Filter the signals
+    moving_average = 5
+    df['MRU1_Roll_vel'] = df['MRU1_Roll_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Roll_CIMS_vel'] = df['Platform_Roll_CIMS_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Roll_MRU4_vel'] = df['Platform_Roll_MRU4_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+
+    df['MRU1_Pitch_vel'] = df['MRU1_Pitch_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Pitch_CIMS_vel'] = df['Platform_Pitch_CIMS_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
+    df['Platform_Pitch_MRU4_vel'] = df['Platform_Pitch_MRU4_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
+
+    df['MRU1_Heave_Velocity'] = df['MRU1_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['MRU2_Heave_Velocity'] = df['MRU2_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['MRU3_Heave_Velocity'] = df['MRU3_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Heave_CIMS_vel'] = df['Platform_Heave_CIMS_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
+
+    # Calculate the filtered residuals
+    df['Residual_Roll_CIMS_vel'] = df['MRU1_Roll_vel'] + df['Platform_Roll_CIMS_vel']
+    df['Residual_Roll_MRU4_vel'] = df['MRU1_Roll_vel'] + df['Platform_Roll_MRU4_vel']
+
+    df['Residual_Pitch_CIMS_vel'] = df['MRU1_Pitch_vel'] + df['Platform_Pitch_CIMS_vel']
+    df['Residual_Pitch_MRU4_vel'] = df['MRU1_Pitch_vel'] + df['Platform_Pitch_MRU4_vel']
+
+    df['Residual_Heave_CIMS_vel'] = df['MRU1_Heave_Velocity'] + df['Platform_Heave_CIMS_vel']
+    df['Residual_Heave_MRU4_vel'] = df['MRU1_Heave_Velocity'] - df['Platform_Heave_MRU4_vel']
+
+
+    # calculate velocity derivatives
+    df['Cyl1_Vel_CIMS_unfiltered'] = df['Cyl1_Pos_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl2_Vel_CIMS_unfiltered'] = df['Cyl2_Pos_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl3_Vel_CIMS_unfiltered'] = df['Cyl3_Pos_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+
+    df['Cyl1_Vel_Ideal_unfiltered'] = df['Cyl1_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl2_Vel_Ideal_unfiltered'] = df['Cyl2_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Cyl3_Vel_Ideal_unfiltered'] = df['Cyl3_Pos_Ideal'].diff() / df['Timestamp'].diff().dt.total_seconds()
+
+    moving_average = 5
+    df['Cyl1_Vel_CIMS'] = df['Cyl1_Vel_CIMS_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Cyl2_Vel_CIMS'] = df['Cyl2_Vel_CIMS_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Cyl3_Vel_CIMS'] = df['Cyl3_Vel_CIMS_unfiltered'].rolling(moving_average).sum() / moving_average
+
+    df['Cyl1_Vel_Ideal'] = df['Cyl1_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Cyl2_Vel_Ideal'] = df['Cyl2_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Cyl3_Vel_Ideal'] = df['Cyl3_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
+
+
+
+
+
+
 
     return df
 

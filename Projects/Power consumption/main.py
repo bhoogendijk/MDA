@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import mplcursors
 
+
 # define filters. These will be used to only load the data the are within the filters. Filters are applied by giving
 # them as a variable to the loading function
 def filter_heavelim(df):
@@ -23,7 +24,6 @@ def filter_system_status(df):
 # Define the timeframes. The script will loop through each timeframe seperately. It loads the data it finds that is
 # within the timeframe (and the filter). Then code, such as plotting, is applied to the loaded data.
 timeframes = [
-    {'start': '2016-09-21 02:00', 'end': '2016-09-21 3:00'},
     {'start': '2016-09-21 02:00', 'end': '2016-09-21 15:00'},
     {'start': '2016-10-23 21:00', 'end': '2016-10-24 18:00'},
     {'start': '2016-10-25 03:00', 'end': '2016-10-25 14:00'},
@@ -58,40 +58,44 @@ timeframes = [
     {'start': '2019-06-13 12:00', 'end': '2019-06-17 02:00'},
 ]
 
-timeframes = [{'start': '2016-09-21 02:00', 'end': '2016-09-21 3:00'},  #25%
-              {'start': '2016-10-25 11:00', 'end': '2016-10-25 13:00'}, #60%
-              {'start': '4-9-19 14:00', 'end': '4-9-19 16:00'},#55%
-              {'start': '4-11-19 10:00', 'end': '4-11-19 11:30'}, #80%
-              ]
+#timeframes = [
+#    {'start': '2020-09-17 10:18', 'end': '2020-09-17 11:20'},  # Tp070_Hs200_Parallel
+#    {'start': '2020-09-17 11:20', 'end': '2020-09-17 12:21'},  # Tp070_Hs200_Perpendic
+#    {'start': '2020-09-17 12:38', 'end': '2020-09-17 13:40'},  # Tp110_Hs200_Parallel
+#    {'start': '2020-09-17 13:40', 'end': '2020-09-17 14:41'},  # Tp110_Hs200_Perpendic
+#]
 
 # timeframes = timeframes[0:2]
 
 datafolder = '../data/'  # data folder in which the data is searched for. default is '../data/'
 
 max_data_point_to_plot = 50000  # Removes data to for quick plotting at the cost of level of detail at high zoom levels
-reduce_plot_datapoints = False # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
+reduce_plot_datapoints = False  # True: data is reduced to max_data_points_to_plot. False: the data is not reduced
 
 plot_UR = False  # plot the UR figure
 plot_RPH = False  # plot the RPH figure
-plot_histogram = False  # plot the heave gain histogram figure
+plot_histogram = False # plot the heave gain histogram figure
 plot_heave_gain_roll = False
 plot_power_consumption = True
 
-save_figures = True  # save  the figures that are plotted
-show_figures = False # show  the figures that are plotted
+save_figures = False  # save  the figures that are plotted
+show_figures = True  # show  the figures that are plotted
 
-save_key_values = False
-filename_key_values = './key_values.csv'
+save_key_values = True
+filename_key_values = './Projects/HeaveGain/key_values.csv'
+
+simulation = False
 
 key_values_list = []
+
 # code execution
 run_counter = 0
 for timeframe in timeframes:
     run_counter += 1
-
     # LOADING THE DATA
     start = timeframe['start']
     end = timeframe['end']
+    #df = helpers.load_datarange(start, end, datafolder=datafolder)
     df = helpers.load_datarange(start, end, ff=filter_system_status, datafolder=datafolder)
     # df = helpers.load()
     print('loading data completed')
@@ -100,6 +104,10 @@ for timeframe in timeframes:
 
     # calculate cylinder velocities and duty cycle
     df = helpers.add_derivative_data(df)
+
+    if simulation:
+        df['Heave_Gain_DC'] *= 3 / 2
+        df.loc[df.Heave_Gain_DC > 1, 'Heave_Gain'] = 1
 
     # calculate active heave gain and UR, combine them in one key values dict
     key_values = {'Heave_Gain_Active': (df['Heave_Gain'][df['Heave_Gain'] < 1]).count() / float(len(df)) * 100.0}
@@ -123,10 +131,10 @@ for timeframe in timeframes:
     sf = parser.parse(start)
     ef = parser.parse(end)
     savename = f"run {run_counter} {sf.strftime('%Y-%m-%d %H%M')} till {ef.strftime('%Y-%m-%d %H%M')} "
-    savenameUR = 'plots/' + savename + 'UR.png'
-    savenameRPH = 'plots/' + savename + 'RPH.png'
-    savenameHGR = 'plots/' + savename + 'HGR.png'
-    savenamePWR = 'plots/' + savename + 'PWR.png'
+    savenameUR = './Projects/HeaveGain/plots/' + savename + 'UR.png'
+    savenameRPH = './Projects/HeaveGain/plots/' + savename + 'RPH.png'
+    savenameHGR = './Projects/HeaveGain/plots/' + savename + 'HGR.png'
+    savenamePWR = './Projects/HeaveGain/plots/' + savename + 'PWR.png'
 
     # plot the data
     if plot_UR:
@@ -149,7 +157,7 @@ for timeframe in timeframes:
         figHGR.set_size_inches(19, 12.8)
         if save_figures: plt.savefig(savenameHGR, bbox_inches='tight', dpi=100)
 
-    if plot_power_consumption :
+    if plot_power_consumption:
         figHGR, axHGR = plotters.power_consumption(df)
         figHGR.set_size_inches(19, 12.8)
         if save_figures: plt.savefig(savenamePWR, bbox_inches='tight', dpi=100)
@@ -169,9 +177,7 @@ for timeframe in timeframes:
     if plot_histogram: figHist.clf();plt.close(figHist)
 
     filename_pwr = 'plots/' + savename + 'PWR.csv'
-    if True: df[{'Timestamp','Power_Consumption'}].to_csv(filename_pwr, index=True)
-
+    if False: df[{'Timestamp', 'Power_Consumption'}].to_csv(filename_pwr, index=True)
 
 key_values = pd.DataFrame(key_values_list)
 if save_key_values: key_values.to_csv(filename_key_values)
-
