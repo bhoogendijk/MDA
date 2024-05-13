@@ -14,6 +14,7 @@ filename_input = "NORMAND_Tp070_Hs200_Hdg000_Parallel.xlsx"
 initialdiroutput = "C:/Users/b.hoogendijk/Desktop/BM folder copies/281 Equinor - Qualification process Equinor T700/Engineering\Simulations with hostsim/autosave"
 
 filenames_output = [
+    'BM_AS10_221009T065637_Tp07Hs200Par_na.csv',
     'BM_AS10_221009T071137_endurance_test_offshore_na.csv',
     'BM_AS10_221009T072637_endurance_test_offshore_na.csv',
     'BM_AS10_221009T074137_endurance_test_offshore_na.csv',
@@ -103,6 +104,10 @@ ax[3, 1].legend(['Measured Heave Velocity'])
 # PLOT ROLL PITCH AND HEAVE. MRU MEASURED MOTION AND SIMULATION MOTIONS
 fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
 df_log.plot(ax=ax, y=['Utilisation_Ratio'], x='Timestamp', kind='line')
+
+fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
+df_log.plot(ax=ax, y=['System_Mode'], x='Timestamp', kind='line')
+
 
 # MRU1_Heave_Velocity_unfiltered
 

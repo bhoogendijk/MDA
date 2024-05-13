@@ -94,8 +94,8 @@ def read_csv(file):
 
     # Change the 'units'
     df['MRU01_130'] *= 1000  # Platform heave in meters to heave in mm
-    df['MRU01_314'] *= 1000 # Platform heave velocity in m/s to mm/s
-    df['MRU01_131'] *= 1000 # Platform heave velocity in MP2 in m/s to mm/s
+    df['MRU01_314'] *= 1000  # Platform heave velocity in m/s to mm/s
+    df['MRU01_131'] *= 1000  # Platform heave velocity in MP2 in m/s to mm/s
     # MAP to new better understandable names
     mapping = {
         'PLC24_EM1_Running': 'EM1_Running',
@@ -122,14 +122,14 @@ def read_csv(file):
         'MRU01_064_DEG_SHIP': 'MRUp_Pitch',
         'MRU01_065': '065',
         'MRU01_130': 'MRUp_Heave',
-        'MRU01_131': 'Platform_Heave_MRU4MP2_vel', #likely incorrect, it is unknown what signal is MP2 and MP1
+        'MRU01_131': 'Platform_Heave_MRU4MP2_vel',  # likely incorrect, it is unknown what signal is MP2 and MP1
         'MRU01_300': '300',
         'MRU01_301': '301',
         'MRU01_302': '302',
         'MRU01_303': '303',
         'MRU01_304': '304',
         'MRU01_305': '305',
-        'MRU01_314': 'Platform_Heave_MRU4_vel', #likely incorrect, it is unknown what signal is MP2 and MP1
+        'MRU01_314': 'Platform_Heave_MRU4_vel',  # likely incorrect, it is unknown what signal is MP2 and MP1
         'MRU01_324': '324',
         'MRU01_325': '325',
         'MRU01_326': '326',
@@ -271,7 +271,7 @@ def read_csv_bm001(file):
 
     # Change the 'units'
     df['MRU01_130'] *= 1000  # Platform heave in meters to heave in mm
-    df['MRU01_314'] *= 1000 # Platform heave velocity in m/s to mm/s
+    df['MRU01_314'] *= 1000  # Platform heave velocity in m/s to mm/s
 
     # MAP to new better understandable names
     mapping = {
@@ -486,11 +486,13 @@ def get_BM10_filenames_datarange(start, end, folder='../data/'):
 
 def add_derivative_data(df, rotation=270):
     # minimum of heave gain
+    # df['Heave_Gain_DC'] = df['Heave_Gain_DC'] * 3 / 2  # TODO: only multiply by 3/2 if all motors are off
     df['Heave_Gain'] = df[['Heave_Gain_DC', 'Heave_Gain_Stroke', 'Heave_Gain_Speed']].min(axis=1)
 
     df['MRU1_Heave'] *= -1  # BM003 uses heave moving down as positive, so we will adjust to our reference frame
+    df['MRU2_Heave'] *= -1  # BM003 uses heave moving down as positive, so we will adjust to our reference frame
+    df['MRU3_Heave'] *= -1  # BM003 uses heave moving down as positive, so we will adjust to our reference frame
     df['MRU1_Pitch'] *= -1  # BM003 uses roll portside down down as positive, so we will adjust to our reference frame
-
 
     window_size = 13
     polyorder = 2
@@ -532,6 +534,14 @@ def add_derivative_data(df, rotation=270):
         df['Platform_Pitch_CIMS'] = np.arctan(
             (df['Cyl1_Pos_CIMS'] - df['Cyl2_Pos_CIMS']) / 13800.0) * 180 / np.pi  # for 270 degree rotation
         df['Platform_Heave_CIMS'] = (df['Cyl1_Pos_CIMS'] + df['Cyl2_Pos_CIMS'] + df['Cyl3_Pos_CIMS']) / 3 - 1250
+
+        df['Platform_Roll_Ideal'] = np.arctan((1 / 2 * df['Cyl1_Pos_Ideal'] + 1 / 2 * df['Cyl2_Pos_Ideal'] - df[
+            'Cyl3_Pos_Ideal']) / 11951.1) * 180 / np.pi  # for 270 degree rotation
+        df['Platform_Pitch_Ideal'] = np.arctan(
+            (df['Cyl1_Pos_Ideal'] - df['Cyl2_Pos_Ideal']) / 13800.0) * 180 / np.pi  # for 270 degree rotation
+        df['Platform_Heave_Ideal'] = df['Heave_Gain'] * (
+                    (df['Cyl1_Pos_Ideal'] + df['Cyl2_Pos_Ideal'] + df['Cyl3_Pos_Ideal']) / 3)
+
     elif rotation == 0:
         df['Platform_Pitch_CIMS'] = np.arctan((1 / 2 * df['Cyl1_Pos_CIMS'] + 1 / 2 * df['Cyl2_Pos_CIMS'] - df[
             'Cyl3_Pos_CIMS']) / 11951.1) * 180 / np.pi  # for 0 degree rotation
@@ -540,12 +550,18 @@ def add_derivative_data(df, rotation=270):
         df['Platform_Heave_CIMS'] = (df['Cyl1_Pos_CIMS'] + df['Cyl2_Pos_CIMS'] + df['Cyl3_Pos_CIMS']) / 3 - 1250
     #     TODO: add rotation 180 and 90
     else:
-        raise("platform rotation not defined")
+        raise ("platform rotation not defined")
 
     # Rename for clarity
     df['Platform_Roll_MRU4'] = df['MRUp_Roll']
     df['Platform_Pitch_MRU4'] = df['MRUp_Pitch']
     df['Platform_Heave_MRU4'] = df['MRUp_Heave']
+
+    # Calculate the residual platform motions based on vessel motion and Ideal motions (Only works with cylinders
+    # actually moving but regardless whether on Hostsim or on skid MRU's.
+    df['Residual_Roll_Ideal'] = df['MRU1_Roll'] + df['Platform_Roll_Ideal']
+    df['Residual_Pitch_Ideal'] = df['MRU1_Pitch'] + df['Platform_Pitch_Ideal']
+    df['Residual_Heave_Ideal'] = df['MRU1_Heave'] + df['Platform_Heave_Ideal']
 
     # Calculate the residual platform motions based on vessel motion and CIMS motions (Only works with cylinders
     # actually moving but regardless whether on Hostsim or on skid MRU's.
@@ -561,30 +577,50 @@ def add_derivative_data(df, rotation=270):
 
     # calculate velocity derivatives
     df['MRU1_Roll_vel_unfiltered'] = df['MRU1_Roll'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Platform_Roll_CIMS_vel_unfiltered'] = df['Platform_Roll_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Platform_Roll_MRU4_vel_unfiltered'] = df['Platform_Roll_MRU4'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Roll_Ideal_vel_unfiltered'] = df['Platform_Roll_Ideal'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
+    df['Platform_Roll_CIMS_vel_unfiltered'] = df['Platform_Roll_CIMS'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
+    df['Platform_Roll_MRU4_vel_unfiltered'] = df['Platform_Roll_MRU4'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
 
     df['MRU1_Pitch_vel_unfiltered'] = df['MRU1_Pitch'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Platform_Pitch_CIMS_vel_unfiltered'] = df['Platform_Pitch_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Platform_Pitch_MRU4_vel_unfiltered'] = df['Platform_Pitch_MRU4'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Pitch_Ideal_vel_unfiltered'] = df['Platform_Pitch_Ideal'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
+    df['Platform_Pitch_CIMS_vel_unfiltered'] = df['Platform_Pitch_CIMS'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
+    df['Platform_Pitch_MRU4_vel_unfiltered'] = df['Platform_Pitch_MRU4'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
 
     df['MRU1_Heave_Velocity_unfiltered'] = df['MRU1_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
     df['MRU2_Heave_Velocity_unfiltered'] = df['MRU2_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
     df['MRU3_Heave_Velocity_unfiltered'] = df['MRU3_Heave'].diff() / df['Timestamp'].diff().dt.total_seconds()
-    df['Platform_Heave_CIMS_vel_unfiltered'] = df['Platform_Heave_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
+    df['Platform_Heave_Ideal_vel_unfiltered'] = df['Platform_Heave_Ideal'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
+    df['Platform_Heave_CIMS_vel_unfiltered'] = df['Platform_Heave_CIMS'].diff() / df[
+        'Timestamp'].diff().dt.total_seconds()
     # df['Platform_Heave_MRU4_vel'] velocity already exists, no need to differentiate platform MRU heave signal
 
     # calculate the residuals
-    df['Residual_Heave_CIMS_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] + df['Platform_Heave_CIMS_vel_unfiltered']
+    df['Residual_Heave_Ideal_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] + df[
+        'Platform_Heave_Ideal_vel_unfiltered']
+    df['Residual_Heave_CIMS_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] + df[
+        'Platform_Heave_CIMS_vel_unfiltered']
     df['Residual_Heave_MRU4_vel_unfiltered'] = df['MRU1_Heave_Velocity_unfiltered'] - df['Platform_Heave_MRU4_vel']
 
     # Filter the signals
     moving_average = 5
     df['MRU1_Roll_vel'] = df['MRU1_Roll_vel_unfiltered'].rolling(moving_average).sum() / moving_average
-    df['Platform_Roll_CIMS_vel'] = df['Platform_Roll_CIMS_vel_unfiltered'].rolling(moving_average).sum() / moving_average
-    df['Platform_Roll_MRU4_vel'] = df['Platform_Roll_MRU4_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Roll_Ideal_vel'] = df['Platform_Roll_Ideal_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
+    df['Platform_Roll_CIMS_vel'] = df['Platform_Roll_CIMS_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
+    df['Platform_Roll_MRU4_vel'] = df['Platform_Roll_MRU4_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
 
     df['MRU1_Pitch_vel'] = df['MRU1_Pitch_vel_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Pitch_Ideal_vel'] = df['Platform_Pitch_Ideal_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
     df['Platform_Pitch_CIMS_vel'] = df['Platform_Pitch_CIMS_vel_unfiltered'].rolling(
         moving_average).sum() / moving_average
     df['Platform_Pitch_MRU4_vel'] = df['Platform_Pitch_MRU4_vel_unfiltered'].rolling(
@@ -593,19 +629,23 @@ def add_derivative_data(df, rotation=270):
     df['MRU1_Heave_Velocity'] = df['MRU1_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
     df['MRU2_Heave_Velocity'] = df['MRU2_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
     df['MRU3_Heave_Velocity'] = df['MRU3_Heave_Velocity_unfiltered'].rolling(moving_average).sum() / moving_average
+    df['Platform_Heave_Ideal_vel'] = df['Platform_Heave_Ideal_vel_unfiltered'].rolling(
+        moving_average).sum() / moving_average
     df['Platform_Heave_CIMS_vel'] = df['Platform_Heave_CIMS_vel_unfiltered'].rolling(
         moving_average).sum() / moving_average
 
     # Calculate the filtered residuals
+    df['Residual_Roll_Ideal_vel'] = df['MRU1_Roll_vel'] + df['Platform_Roll_Ideal_vel']
     df['Residual_Roll_CIMS_vel'] = df['MRU1_Roll_vel'] + df['Platform_Roll_CIMS_vel']
     df['Residual_Roll_MRU4_vel'] = df['MRU1_Roll_vel'] + df['Platform_Roll_MRU4_vel']
 
+    df['Residual_Pitch_Ideal_vel'] = df['MRU1_Pitch_vel'] + df['Platform_Pitch_Ideal_vel']
     df['Residual_Pitch_CIMS_vel'] = df['MRU1_Pitch_vel'] + df['Platform_Pitch_CIMS_vel']
     df['Residual_Pitch_MRU4_vel'] = df['MRU1_Pitch_vel'] + df['Platform_Pitch_MRU4_vel']
 
+    df['Residual_Heave_Ideal_vel'] = df['MRU1_Heave_Velocity'] + df['Platform_Heave_Ideal_vel']
     df['Residual_Heave_CIMS_vel'] = df['MRU1_Heave_Velocity'] + df['Platform_Heave_CIMS_vel']
     df['Residual_Heave_MRU4_vel'] = df['MRU1_Heave_Velocity'] - df['Platform_Heave_MRU4_vel']
-
 
     # calculate velocity derivatives
     df['Cyl1_Vel_CIMS_unfiltered'] = df['Cyl1_Pos_CIMS'].diff() / df['Timestamp'].diff().dt.total_seconds()
@@ -624,12 +664,6 @@ def add_derivative_data(df, rotation=270):
     df['Cyl1_Vel_Ideal'] = df['Cyl1_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
     df['Cyl2_Vel_Ideal'] = df['Cyl2_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
     df['Cyl3_Vel_Ideal'] = df['Cyl3_Vel_Ideal_unfiltered'].rolling(moving_average).sum() / moving_average
-
-
-
-
-
-
 
     return df
 
